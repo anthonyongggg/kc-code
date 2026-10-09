@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>市場對數通道報告 __VERSION__</title>
+<style>
+  :root{
+    --bg:#15171c; --panel:#1c1f26; --panel-border:#2b2f38;
+    --text:#e8e6df; --muted:#8b8f99; --gold:#d4a24c; --gold-dim:#8a6f3d;
+    --red:#c9605a; --blue:#5b8fd4; --green:#6fae7c;
+    --mono:'SF Mono',Consolas,Menlo,monospace; --serif:Georgia,'Noto Serif TC',serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{background:var(--bg);color:var(--text);font-family:var(--serif);-webkit-font-smoothing:antialiased;}
+  header{padding:26px 24px 10px;border-bottom:1px solid var(--panel-border);text-align:center;}
+  .version-banner{
+    font-family:var(--mono);font-size:1.3rem;font-weight:700;color:#15171c;background:var(--gold);
+    padding:12px 28px;border-radius:6px;display:inline-block;margin-bottom:16px;letter-spacing:0.03em;
+  }
+  header h1{margin:0 0 4px;font-size:1.4rem;font-weight:600;}
+  header p{margin:0;color:var(--muted);font-family:var(--mono);font-size:0.76rem;}
+  .pe-banner{text-align:center;padding:10px 24px;font-family:var(--mono);font-size:0.8rem;border-bottom:1px solid var(--panel-border);color:var(--gold);}
+  .search-bar{
+    display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;
+    padding:14px 24px;border-bottom:1px solid var(--panel-border);background:#181a20;
+  }
+  .search-bar input{
+    background:#0f1115;border:1px solid var(--panel-border);border-radius:5px;
+    color:var(--text);padding:9px 12px;font-family:var(--mono);font-size:0.82rem;
+    width:340px;max-width:70vw;
+  }
+  .search-bar input::placeholder{color:var(--muted);}
+  .search-bar select{
+    background:#0f1115;border:1px solid var(--panel-border);border-radius:5px;
+    color:var(--text);padding:9px 12px;font-family:var(--mono);font-size:0.82rem;
+    cursor:pointer;
+  }
+  .search-bar button{
+    background:var(--gold);color:#15171c;border:none;border-radius:5px;
+    padding:9px 18px;font-family:var(--mono);font-weight:700;font-size:0.82rem;cursor:pointer;
+  }
+  .search-bar button:disabled{opacity:0.5;cursor:default;}
+  #ticker-search-status{font-family:var(--mono);font-size:0.72rem;color:var(--muted);}
+  .search-bar-note{
+    flex-basis:100%;text-align:center;font-family:var(--mono);font-size:0.65rem;
+    color:var(--muted);opacity:0.8;
+  }
+
+  /* PE compare results */
+  #pe-compare-results{padding:0 24px;}
+  .pe-table-wrap{
+    background:var(--panel);border:1px solid var(--panel-border);border-radius:6px;
+    padding:16px;margin:14px 0;overflow-x:auto;
+  }
+  .pe-table-wrap table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:0.78rem;}
+  .pe-table-wrap th,.pe-table-wrap td{
+    padding:8px 10px;text-align:right;border-bottom:1px solid var(--panel-border);
+  }
+  .pe-table-wrap th:first-child,.pe-table-wrap td:first-child{text-align:left;color:var(--text);}
+  .pe-table-wrap th{color:var(--muted);font-weight:600;font-size:0.7rem;text-transform:uppercase;}
+  .pe-table-wrap td{color:var(--gold);}
+  .pe-table-wrap .estimated-tag{color:var(--muted);font-size:0.62rem;}
+  .pe-warning{
+    margin-top:10px;padding:10px 12px;background:rgba(212,162,76,0.08);
+    border:1px solid rgba(212,162,76,0.3);border-radius:4px;
+    font-size:0.78rem;color:var(--gold);
+  }
+
+  /* 每張圖卡片自己嘅 PE 區塊 (用戶要求: 每個graph都要有比較PE按鈕) */
+  .card-pe-section{margin-top:12px;border-top:1px solid var(--panel-border);padding-top:10px;}
+  .card-pe-toggle-btn{
+    background:transparent;border:1px solid var(--panel-border);color:var(--muted);
+    border-radius:4px;padding:5px 10px;font-family:var(--mono);font-size:0.7rem;cursor:pointer;
+  }
+  .card-pe-toggle-btn:hover{border-color:var(--gold);color:var(--gold);}
+  .card-pe-panel{display:none;margin-top:8px;}
+  .card-pe-panel.active{display:block;}
+  .card-pe-panel input{
+    background:#0f1115;border:1px solid var(--panel-border);border-radius:4px;
+    color:var(--text);padding:6px 8px;font-family:var(--mono);font-size:0.72rem;
+    width:110px;margin-right:6px;margin-bottom:6px;
+  }
+  .card-pe-panel button{
+    background:var(--gold);color:#15171c;border:none;border-radius:4px;
+    padding:6px 12px;font-family:var(--mono);font-weight:700;font-size:0.72rem;cursor:pointer;
+  }
+  .card-pe-status{font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-left:6px;}
+  .card-pe-result{margin-top:8px;}
+  .card-pe-nodata{font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin-top:6px;}
+
+  /* Risk/Return table */
+  #risk-return-panel{padding:0 24px;margin-bottom:10px;}
+  .rr-chart-wrap{
+    background:var(--panel);border:1px solid var(--panel-border);border-radius:6px;
+    padding:16px;margin-top:14px;position:relative;
+  }
+  #rr-scatter-canvas{width:100%!important;display:block;cursor:default;}
+  .rr-table-wrap{
+    background:var(--panel);border:1px solid var(--panel-border);border-radius:6px;
+    padding:16px;margin-top:14px;overflow-x:auto;
+  }
+  #rr-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:0.8rem;}
+  #rr-table th,#rr-table td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--panel-border);}
+  #rr-table th:first-child,#rr-table td:first-child{text-align:left;color:var(--text);}
+  #rr-table th{color:var(--muted);font-weight:600;font-size:0.7rem;text-transform:uppercase;}
+  #rr-table td{color:var(--gold);}
+  .rr-note{
+    margin-top:12px;padding:10px 12px;background:rgba(212,162,76,0.08);
+    border:1px solid rgba(212,162,76,0.3);border-radius:4px;
+    font-size:0.8rem;color:var(--gold);text-align:center;
+  }
+  .rr-date-controls{
+    display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;
+    padding:12px 24px;background:#181a20;border:1px solid var(--panel-border);
+    border-radius:6px;margin-top:10px;font-family:var(--mono);font-size:0.78rem;color:var(--muted);
+  }
+  .rr-date-controls input[type="date"]{
+    background:#0f1115;border:1px solid var(--panel-border);border-radius:4px;
+    color:var(--text);padding:6px 8px;font-family:var(--mono);font-size:0.78rem;
+  }
+  .rr-date-controls button{
+    background:var(--gold);color:#15171c;border:none;border-radius:5px;
+    padding:8px 16px;font-family:var(--mono);font-weight:700;font-size:0.78rem;cursor:pointer;
+  }
+  .rr-row-remove-btn{
+    background:transparent;border:1px solid var(--panel-border);color:var(--muted);
+    border-radius:4px;padding:2px 8px;cursor:pointer;font-size:0.7rem;
+  }
+  .rr-row-remove-btn:hover{background:var(--red);color:#fff;border-color:var(--red);}
+
+  main{padding:20px 24px 50px;display:grid;grid-template-columns:repeat(auto-fit,minmax(520px,1fr));gap:20px;}
+  .chartcard{position:relative;}
+  .chartcard h2{margin:0 0 10px;font-size:1rem;font-weight:600;padding-right:26px;}
+  .card-close-btn{
+    position:absolute;top:0;right:0;width:22px;height:22px;border-radius:4px;
+    background:transparent;border:1px solid var(--panel-border);color:var(--muted);
+    font-size:0.75rem;line-height:1;cursor:pointer;display:flex;align-items:center;
+    justify-content:center;z-index:6;transition:background 0.15s,color 0.15s;
+  }
+  .card-close-btn:hover{background:var(--red);color:#fff;border-color:var(--red);}
+  .chartwrap{background:var(--panel);border:1px solid var(--panel-border);border-radius:6px;padding:16px;position:relative;}
+  .chart-click-hint{position:absolute;top:8px;right:12px;font-family:var(--mono);font-size:0.62rem;color:var(--muted);background:rgba(21,23,28,0.7);padding:2px 6px;border-radius:3px;pointer-events:none;z-index:5;}
+  canvas{width:100%!important;display:block;cursor:zoom-in;}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-family:var(--mono);font-size:0.68rem;color:var(--muted);}
+  .legend span{display:flex;align-items:center;gap:4px;}
+  .swatch{width:12px;height:2px;display:inline-block;}
+  .readout{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;}
+  .readout .cell{background:#161920;border:1px solid var(--panel-border);border-radius:4px;padding:7px 9px;}
+  .readout .cell .k{font-family:var(--mono);font-size:0.6rem;color:var(--muted);text-transform:uppercase;}
+  .readout .cell .v{font-family:var(--mono);font-size:0.82rem;color:var(--gold);margin-top:2px;}
+  .note{margin-top:10px;font-size:0.76rem;color:var(--muted);}
+  @media (max-width: 1100px){ main{grid-template-columns:1fr;} }
+
+  /* True fullscreen viewer - fills entire viewport */
+  #fullscreen-overlay{
+    display:none;position:fixed;inset:0;background:#0a0b0e;
+    z-index:1000;flex-direction:column;padding:0;
+  }
+  #fullscreen-overlay.active{display:flex;}
+  #fullscreen-overlay .fs-header{
+    flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;
+    padding:14px 20px;border-bottom:1px solid var(--panel-border);
+  }
+  #fullscreen-overlay .fs-title{font-family:var(--serif);font-size:1.2rem;color:var(--text);}
+  #fullscreen-overlay .fs-close{
+    background:var(--gold);color:#15171c;border:none;border-radius:4px;
+    padding:10px 20px;font-family:var(--mono);font-weight:700;cursor:pointer;font-size:0.9rem;
+  }
+  #fullscreen-body{
+    flex:1 1 auto;display:flex;flex-direction:column;padding:16px 20px;overflow:hidden;
+    min-height:0;
+  }
+  #fullscreen-canvas-wrap{
+    flex:1 1 auto;background:var(--panel);border:1px solid var(--panel-border);
+    border-radius:6px;padding:16px;position:relative;min-height:0;
+  }
+  #fullscreen-canvas{width:100%!important;height:100%!important;display:block;}
+  #fs-legend{flex:0 0 auto;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="version-banner">這是 __VERSION__</div>
+  <h1>市場對數通道報告</h1>
+  <p>數據產生時間: __GENERATED_TS__ · 由本機 Python + yfinance (Yahoo Finance) 下載，數據已內嵌，離線可看</p>
+</header>
+
+<div class="pe-banner">
+  恆生指數市盈率通道: 已改用 2011-2026 逐年實際數值 (hardcode)，標準差通道由呢批數據自動計算 · 現值: __HSI_PE_CURRENT__ (__HSI_PE_DATE__)
+</div>
+
+<div class="search-bar">
+  <input type="text" id="ticker-search-input" placeholder="輸入股票代號 (例如 MSTR, AAPL, TSLA) 然後撳「加入」..." />
+  <button id="ticker-search-btn" onclick="handleTickerSearch()">加入</button>
+  <span id="ticker-search-status"></span>
+  <div class="search-bar-note">數據來源: Yahoo Finance (經本機 Python 伺服器即時攞取，需要 python market_channels.py 保持行緊) · 加入嘅股票會自動顯示 PE 同 Risk/Return</div>
+</div>
+
+<div id="ai-prompt-box" style="
+  margin:16px 24px;background:#1c1f26;border:1px solid #2b2f38;
+  border-radius:6px;padding:16px 18px;font-family:'SF Mono',Consolas,Menlo,monospace;
+">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+    <div style="color:#d4a24c;font-size:0.85rem;font-weight:700;">
+      💡 睇圖表前，建議先開 AI (例如 Edge 側邊 Copilot / ChatGPT) 問返呢十條宏觀問題
+    </div>
+    <button onclick="copyAiPrompt()" style="
+      background:#d4a24c;color:#15171c;border:none;border-radius:5px;
+      padding:8px 16px;font-family:inherit;font-weight:700;font-size:0.78rem;cursor:pointer;
+    ">複製提示 (Copy)</button>
+  </div>
+  <div id="ai-prompt-status" style="color:#8b8f99;font-size:0.7rem;margin-top:6px;"></div>
+</div>
+
+<main id="main"></main>
+
+<div id="risk-return-panel">
+  <h2 style="padding:0 24px;">Risk / Return 總覽 (每張圖自動加入)</h2>
+  <div class="rr-chart-wrap">
+    <span class="chart-click-hint">Risk (X軸) vs Return (Y軸)</span>
+    <canvas id="rr-scatter-canvas" height="380"></canvas>
+  </div>
+  <div class="rr-table-wrap">
+    <table id="rr-table">
+      <thead>
+        <tr><th>股票/資產</th><th>Return (CAGR)</th><th>Risk (年化波幅)</th><th>實際數據範圍</th><th></th></tr>
+      </thead>
+      <tbody id="rr-table-body"></tbody>
+    </table>
+    <div class="rr-note">當high risk high return的股票，前景沒有大問題，現在在低位就是好的買入時機 ！？</div>
+  </div>
+  <div class="rr-date-controls">
+    <label>開始日期: <input type="date" id="rr-start-date" value="2000-01-01" /></label>
+    <label>結束日期: <input type="date" id="rr-end-date" /></label>
+    <button id="rr-recompute-btn" onclick="recomputeAllRiskReturn()">套用日期範圍 (重新計算全部)</button>
+    <span id="rr-recompute-status"></span>
+    <div class="search-bar-note" style="flex-basis:100%;">
+      呢個日期範圍控制器會影響上面表格入面所有已加入嘅股票，唔會逐隻分開設定
+    </div>
+  </div>
+</div>
+
+
+<div id="fullscreen-overlay">
+  <div class="fs-header">
+    <div class="fs-title" id="fs-title"></div>
+    <button class="fs-close" onclick="closeFullscreen()">X 關閉</button>
+  </div>
+  <div id="fullscreen-body">
+    <div id="fullscreen-canvas-wrap">
+      <canvas id="fullscreen-canvas"></canvas>
+    </div>
+    <div class="legend" id="fs-legend">
+      <span><span class="swatch" style="background:#e8e6df"></span>價格/數值</span>
+      <span><span class="swatch" style="background:#c9605a"></span>中軸</span>
+      <span><span class="swatch" style="background:#6fae7c"></span>±1σ</span>
+      <span><span class="swatch" style="background:#5b8fd4"></span>±2σ</span>
+      <span><span class="swatch" style="background:#d4a24c"></span>±3σ</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const AI_MACRO_PROMPT = `請根據目前最新（今日）市場情況，逐項評論以下美股宏觀十大利好/不利好因素，
+每項用 🟢利好 / 🟡中性 / 🔴不利好 評分，並附一兩句現況說明，
+最後給一個綜合總評（利好幾項/中性幾項/不利好幾項），
+以及對未來三個月美股走勢（看升/看跌/中性盤整）的整體判斷：
+
+1. 企業季度盈利表現（獲利面）
+2. AI 巨頭資本支出變現（科技基本面）
+3. 聯儲局利率政策（資金面）
+4. 美國 GDP 經濟增長（經濟總量）
+5. 通膨與核心物價（物價面）
+6. 國際油價與地緣政治局勢（外部風險）
+7. 美國國債殖利率（資產定價錨）
+8. 就業市場與失業率（消費基石）
+9. 零售銷售與消費者信心（內需面）
+10. 市場估值與資金擁擠度（技術面）`;
+
+function copyAiPrompt(){
+  navigator.clipboard.writeText(AI_MACRO_PROMPT).then(function(){
+    document.getElementById('ai-prompt-status').textContent = '已複製！去 AI side panel 貼上 (Ctrl+V) 就得。';
+  }).catch(function(){
+    document.getElementById('ai-prompt-status').textContent = '複製失敗，請手動選取文字複製。';
+  });
+}
+
+const DATA = __DATA_JSON__;
+const HSI_PE_DATA = __HSI_PE_JSON__;
+const NAMES = Object.keys(DATA);
+
+const mainEl = document.getElementById('main');
+const chartState = {};
+
+// 移除一張圖表卡片 (用戶要求嘅 "叉走" 功能)。
+// 除咗喺畫面度移除個 card 元素，仲要清走佢喺 chartState 度嘅殘留
+// 狀態，避免呢個已經冇晒嘅 canvas id 仲殘留喺 chartState，
+// 造成記憶體浪費或者潛在嘅狀態混亂。
+function closeChartCard(cardId){
+  const card = document.getElementById(cardId);
+  if(!card) return;
+  const canvas = card.querySelector('canvas:not(.crosshair-overlay)');
+  if(canvas && canvas.id){
+    delete chartState[canvas.id];
+  }
+  card.remove();
+}
+
+// 用 loop 嚟計 min/max，唔用 Math.min.apply(null, array) 呢種寫法。
+// 原因 (已經用真實測試確認): Math.min.apply(null, array) 當個
+// array 大過大約13萬個元素，會拋出 "Maximum call stack size
+// exceeded" (因為 .apply() 會將成個array拆做逐個function參數，
+// 瀏覽器對呢個參數數量有上限)。股票歷史夠長 (例如50年以上嘅
+// 每日數據)，連埋7條通道線再加future extension，好容易就會
+// 超過呢個上限。用 loop 就冇呢個限制，任何大細嘅array都work。
+function safeMin(arr){
+  let m = Infinity;
+  for(let i=0;i<arr.length;i++){ if(arr[i] < m) m = arr[i]; }
+  return m;
+}
+function safeMax(arr){
+  let m = -Infinity;
+  for(let i=0;i<arr.length;i++){ if(arr[i] > m) m = arr[i]; }
+  return m;
+}
+
+function formatNum(v){
+  if(v===null || v===undefined || isNaN(v)) return '-';
+  if(v>=1000) return v.toLocaleString(undefined,{maximumFractionDigits:0});
+  if(v>=1) return v.toFixed(2);
+  return v.toFixed(4);
+}
+
+function niceLogTicks(minV, maxV){
+  const ticks = [];
+  const minExp = Math.floor(Math.log10(minV));
+  const maxExp = Math.ceil(Math.log10(maxV));
+  const mults = [1, 2, 5];
+  for(let e=minExp; e<=maxExp; e++){
+    for(const m of mults){
+      const v = m * Math.pow(10, e);
+      if(v >= minV*0.95 && v <= maxV*1.05){ ticks.push(v); }
+    }
+  }
+  return ticks;
+}
+
+function niceLinearTicks(minV, maxV, count){
+  count = count || 7;
+  const range = maxV - minV;
+  const roughStep = (range / count) || Math.abs(minV)*0.1 || 1;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+  const residual = roughStep / magnitude;
+  let step;
+  if(residual > 5) step = 10*magnitude;
+  else if(residual > 2) step = 5*magnitude;
+  else if(residual > 1) step = 2*magnitude;
+  else step = magnitude;
+  const start = Math.ceil(minV/step)*step;
+  const ticks = [];
+  for(let v=start; v<=maxV+1e-9; v+=step) ticks.push(v);
+  if(ticks.length === 0) ticks.push(minV, maxV);
+  return ticks;
+}
+
+function drawChart(canvasId, dates, values, bands, useLog, markerPoint, opts){
+  opts = opts || {};
+  const highs = opts.highs || null;
+  const lows = opts.lows || null;
+  const closes = opts.closes || null;
+  const futureDates = opts.futureDates || [];
+  const nFuture = futureDates.length;
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return null;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 500, H = canvas.clientHeight || opts.height || 360;
+  canvas.width = Math.max(1, W*dpr); canvas.height = Math.max(1, H*dpr);
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+
+  const padL=opts.padL || 76, padR=20, padT=16, padB=34;
+  const plotW = Math.max(10, W-padL-padR), plotH = Math.max(10, H-padT-padB);
+
+  // totalLen 係「實際數據 + 未來延伸」嘅總長度。所有 X 軸座標都要
+  // 用返 totalLen 嚟做基準，先可以令通道線 (bands，長度=totalLen)
+  // 同價錢線 (values，長度=實際數據) 共用同一把 X 軸尺，
+  // 令價錢線畫到實際數據盡頭就停，但通道線可以繼續向右延伸。
+  const totalLen = Math.max(values.length + nFuture, values.length, 2);
+  const allDates = dates.concat(futureDates);
+
+  const bandArrays = Object.values(bands);
+  const allVals = bandArrays.flat().concat(values).filter(v => isFinite(v) && v !== null);
+  const toScale = function(v){ return useLog ? Math.log(v) : v; };
+  let minV = safeMin(allVals), maxV = safeMax(allVals);
+  if(minV === maxV){ minV = minV - Math.abs(minV||1)*0.1 - 0.1; maxV = maxV + Math.abs(maxV||1)*0.1 + 0.1; }
+  const lo = toScale(minV), hi = toScale(maxV);
+  const span = (hi-lo) || 1;
+
+  function yToPx(v){ return padT + plotH - ((toScale(v)-lo)/span)*plotH; }
+  function xToPx(i){ return padL + (totalLen<=1 ? 0 : (i/(totalLen-1))*plotW); }
+
+  ctx.strokeStyle = '#2b2f38';
+  ctx.fillStyle = '#8b8f99';
+  ctx.font = (opts.fontSize||10)+'px monospace';
+  ctx.textAlign = 'right';
+
+  const yTicks = useLog ? niceLogTicks(minV, maxV) : niceLinearTicks(minV, maxV);
+  yTicks.forEach(function(v){
+    const py = yToPx(v);
+    if(py < padT-2 || py > padT+plotH+2) return;
+    ctx.beginPath(); ctx.moveTo(padL, py); ctx.lineTo(W-padR, py); ctx.stroke();
+    ctx.fillText(formatNum(v), padL-8, py+3);
+  });
+
+  // 未來延伸區域: 用淡淡嘅斜紋底色標示，等用戶一眼睇到
+  // 「呢段係將趨勢線延伸落去嘅估算，唔係實際成交數據」
+  if(nFuture > 0){
+    const forecastStartPx = xToPx(values.length - 1);
+    const forecastEndPx = xToPx(totalLen - 1);
+    ctx.save();
+    ctx.fillStyle = 'rgba(212,162,76,0.05)';
+    ctx.fillRect(forecastStartPx, padT, forecastEndPx - forecastStartPx, plotH);
+    ctx.strokeStyle = 'rgba(212,162,76,0.35)';
+    ctx.setLineDash([2,3]);
+    ctx.beginPath();
+    ctx.moveTo(forecastStartPx, padT);
+    ctx.lineTo(forecastStartPx, padT+plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(212,162,76,0.6)';
+    ctx.font = (opts.fontSize||10)+'px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('估算延伸 →', (forecastStartPx+forecastEndPx)/2, padT + 12);
+    ctx.restore();
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8b8f99';
+  for(let t=0;t<=6;t++){
+    const idx = Math.round((t/6)*(totalLen-1));
+    const label = allDates[idx] || '';
+    ctx.fillText(label, xToPx(idx), H-10);
+  }
+
+  const colorMap = {'3':'#d4a24c','2':'#5b8fd4','1':'#6fae7c','0':'#c9605a','-1':'#6fae7c','-2':'#5b8fd4','-3':'#d4a24c'};
+  Object.entries(bands).forEach(function(entry){
+    const k = entry[0], arr = entry[1];
+    ctx.beginPath();
+    ctx.strokeStyle = colorMap[k] || '#8b8f99';
+    ctx.lineWidth = k==='0' ? 1.8 : 1;
+    ctx.setLineDash(k==='0' ? [] : [4,3]);
+    arr.forEach(function(v,i){
+      const px = xToPx(i), py = yToPx(v);
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+
+  // 價錢線本身淨係畫到實際數據嘅盡頭 (即 values.length)，
+  // 唔會 (亦都唔應該) 延伸落未來嗰段空白區域。
+  ctx.beginPath();
+  ctx.strokeStyle = '#e8e6df';
+  ctx.lineWidth = 2;
+  values.forEach(function(v,i){
+    const px = xToPx(i), py = yToPx(v);
+    if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  });
+  ctx.stroke();
+
+  if(markerPoint){
+    const px = xToPx(markerPoint.index), py = yToPx(markerPoint.value);
+    ctx.beginPath();
+    ctx.fillStyle = '#ffffff';
+    ctx.arc(px, py, 5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#d4a24c';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#e8e6df';
+    ctx.font = 'bold '+((opts.fontSize||10)+2)+'px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(markerPoint.label, px+10, py-8);
+  }
+
+  const state = {
+    padL: padL, padR: padR, padT: padT, padB: padB, plotW: plotW, plotH: plotH, W: W, H: H,
+    lo: lo, hi: hi, span: span, useLog: useLog, dates: dates, values: values, allDates: allDates,
+    totalLen: totalLen, nFuture: nFuture,
+    highs: highs, lows: lows, closes: closes, bands: bands,
+    xToPx: xToPx, yToPx: yToPx,
+    pxToValue: function(py){
+      const frac = (padT + plotH - py) / plotH;
+      const scaled = lo + frac*span;
+      return useLog ? Math.exp(scaled) : scaled;
+    },
+    pxToIndex: function(px){
+      const frac = (px - padL) / plotW;
+      return Math.round(frac * (totalLen-1));
+    }
+  };
+  chartState[canvasId] = state;
+  return state;
+}
+
+function setupCrosshair(canvasId){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+
+  // 對於全螢幕個 canvas，每次都清走舊嘅 overlay 同事件監聽，
+  // 徹底重新建立，避免監聽器/尺寸殘留造成十字準星數值錯亂
+  let overlay = canvas.parentElement.querySelector('canvas.crosshair-overlay');
+  if(overlay && canvasId === 'fullscreen-canvas'){
+    overlay.remove();
+    overlay = null;
+  }
+  if(!overlay){
+    overlay = document.createElement('canvas');
+    overlay.className = 'crosshair-overlay';
+    overlay.style.position = 'absolute';
+    overlay.style.left = '0';
+    overlay.style.top = '0';
+    overlay.style.pointerEvents = 'none';
+    canvas.parentElement.style.position = 'relative';
+    canvas.parentElement.appendChild(overlay);
+  }
+
+  function resizeOverlay(){
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    overlay.width = Math.max(1, w * dpr);
+    overlay.height = Math.max(1, h * dpr);
+    overlay.style.width = w + 'px';
+    overlay.style.height = h + 'px';
+    const octx = overlay.getContext('2d');
+    octx.setTransform(1,0,0,1,0,0);
+    octx.scale(dpr, dpr);
+  }
+  resizeOverlay();
+  const octx = overlay.getContext('2d');
+
+  function handleMove(px, py){
+    const state = chartState[canvasId];
+    if(!state) return;
+    octx.clearRect(0,0,overlay.width, overlay.height);
+    if(px < state.padL || px > state.W-state.padR || py < state.padT || py > state.padT+state.plotH) return;
+
+    octx.strokeStyle = 'rgba(212,162,76,0.6)';
+    octx.lineWidth = 1;
+    octx.setLineDash([3,3]);
+    octx.beginPath();
+    octx.moveTo(px, state.padT); octx.lineTo(px, state.padT+state.plotH);
+    octx.moveTo(state.padL, py); octx.lineTo(state.W-state.padR, py);
+    octx.stroke();
+    octx.setLineDash([]);
+
+    const value = state.pxToValue(py);
+    const totalLen = state.totalLen || state.values.length;
+    const idx = Math.max(0, Math.min(totalLen-1, state.pxToIndex(px)));
+    const isForecastZone = idx >= state.values.length;
+    const date = (state.allDates && state.allDates[idx]) || state.dates[Math.min(idx, state.dates.length-1)] || '';
+    // 主線而家用緊「每日最高價 High」，唔再係 Close，所以
+    // actualHigh 先係實際對應緊主線嘅數值；Close 就分開由
+    // state.closes 呢個陣列攞 (如果有提供的話)。
+    const actualHigh = isForecastZone ? null : state.values[idx];
+    const actualClose = (!isForecastZone && state.closes && state.closes[idx] != null) ? state.closes[idx] : null;
+
+    // 偵測滑鼠而家最接近邊一條 σ 線 (中軸/±1σ/±2σ/±3σ)。
+    // 做法: 攞返呢個 idx 位置，逐條 band 線嘅實際數值，揾邊條同
+    // 滑鼠嘅 Y 座標 (轉做 pixel 嚟比較，唔係直接比較數值，
+    // 因為 log scale 下面直接比較數值會偏，用 pixel 距離先準確)
+    // 距離最近，並且要求呢個距離喺一個合理範圍 (12px) 之內，
+    // 先當「貼近緊」，避免滑鼠隨便喺圖中央都話貼近咗某條線。
+    const sigmaLabels = {'3':'+3σ','2':'+2σ','1':'+1σ','0':'中軸','-1':'-1σ','-2':'-2σ','-3':'-3σ'};
+    let nearestBand = null, nearestDistPx = Infinity;
+    if(state.bands){
+      Object.keys(state.bands).forEach(function(k){
+        const arr = state.bands[k];
+        if(!arr || idx >= arr.length) return;
+        const bandVal = arr[idx];
+        const bandPy = state.yToPx(bandVal);
+        const distPx = Math.abs(bandPy - py);
+        if(distPx < nearestDistPx){
+          nearestDistPx = distPx;
+          nearestBand = { key: k, label: sigmaLabels[k] || k, value: bandVal };
+        }
+      });
+    }
+    const isNearBand = nearestBand && nearestDistPx <= 12;
+
+    // 十字準星本身跟住滑鼠位置顯示 (常規十字準星行為)。
+    // 如果滑鼠貼近某條 σ 線，個標籤顏色/文字會反映返嗰條線嘅身份，
+    // 等你一眼睇到「而家貼緊邊條線」。
+    const label = isNearBand ? (nearestBand.label + ': ' + formatNum(nearestBand.value)) : formatNum(value);
+    octx.font = '12px monospace';
+    const labelW = octx.measureText(label).width + 12;
+    octx.fillStyle = isNearBand ? '#e8e6df' : '#d4a24c';
+    octx.fillRect(2, py-10, labelW, 20);
+    octx.fillStyle = '#15171c';
+    octx.textAlign = 'left';
+    octx.fillText(label, 7, py+5);
+
+    // 如果貼近緊某條線，喺嗰條線本身沿住佢個實際軌跡加一個
+    // 高亮圓點，等你清楚見到係邊一條線 (唔止睇個標籤文字)。
+    if(isNearBand){
+      const bandPy = state.yToPx(nearestBand.value);
+      octx.beginPath();
+      octx.fillStyle = '#ffffff';
+      octx.arc(px, bandPy, 4, 0, Math.PI*2);
+      octx.fill();
+      octx.strokeStyle = '#d4a24c';
+      octx.lineWidth = 1.5;
+      octx.stroke();
+    }
+
+    const dateLabelW = octx.measureText(date).width + 12;
+    octx.fillStyle = '#d4a24c';
+    octx.fillRect(px-dateLabelW/2, state.padT+state.plotH+2, dateLabelW, 18);
+    octx.fillStyle = '#15171c';
+    octx.textAlign = 'center';
+    octx.fillText(date, px, state.padT+state.plotH+15);
+
+    // 資訊面板: 跟住滑鼠位置顯示 (取代之前固定喺左上角嘅做法)，
+    // 顯示嗰一日嘅實際 最高/收市/最低，同埋而家貼緊邊條 σ 線，
+    // 等你可以分辨 "圖上主線 (最高價)"、"收市價"、"通道線數值"
+    // 呢幾樣嘢嘅分別。
+    // 面板會自動偵測滑鼠係咪太接近畫布嘅左/右/上/下邊緣，
+    // 如果係就將面板反轉去另一側，確保個面板永遠唔會畫出畫布範圍外。
+    // 如果滑鼠喺「未來延伸」區域，冇實際成交數據，面板會清楚標示
+    // 呢一點係通道線嘅延伸估算，唔係實際歷史價位。
+    const hasLow = !isForecastZone && state.lows && state.lows[idx] != null;
+    let infoLines;
+    if(isForecastZone){
+      infoLines = ['日期: ' + date, '(通道延伸估算，非實際數據)'];
+      if(isNearBand){
+        infoLines.push(nearestBand.label + ' 估算值: ' + formatNum(nearestBand.value));
+      }
+    } else {
+      infoLines = ['日期: ' + date, '最高: ' + formatNum(actualHigh)];
+      if(actualClose != null){
+        infoLines.push('收市: ' + formatNum(actualClose));
+      }
+      if(hasLow){
+        infoLines.push('最低: ' + formatNum(state.lows[idx]));
+      }
+      if(isNearBand){
+        infoLines.push(nearestBand.label + ': ' + formatNum(nearestBand.value));
+      }
+    }
+    octx.font = '11px monospace';
+    const infoBoxW = safeMax(infoLines.map(function(l){ return octx.measureText(l).width; })) + 14;
+    const infoBoxH = infoLines.length * 15 + 8;
+
+    const panelMargin = 14; // 面板同滑鼠之間嘅距離
+    const edgeGap = 4;      // 面板同畫布邊緣至少要留嘅空隙
+
+    // 預設: 面板出現喺滑鼠嘅右下方
+    let infoBoxX = px + panelMargin;
+    let infoBoxY = py + panelMargin;
+
+    // 如果右側擺唔落 (太接近右邊緣)，就反轉去滑鼠左側
+    if(infoBoxX + infoBoxW > state.W - edgeGap){
+      infoBoxX = px - panelMargin - infoBoxW;
+    }
+    // 保底: 如果反轉去左側都仲係擺唔落 (即係畫布太窄)，就貼住左邊緣
+    if(infoBoxX < edgeGap){
+      infoBoxX = edgeGap;
+    }
+
+    // 如果下方擺唔落 (太接近底部)，就反轉去滑鼠上方
+    if(infoBoxY + infoBoxH > state.H - edgeGap){
+      infoBoxY = py - panelMargin - infoBoxH;
+    }
+    // 保底: 如果反轉去上方都仲係擺唔落 (畫布太矮)，就貼住頂部邊緣
+    if(infoBoxY < edgeGap){
+      infoBoxY = edgeGap;
+    }
+
+    octx.fillStyle = 'rgba(21,23,28,0.92)';
+    octx.fillRect(infoBoxX, infoBoxY, infoBoxW, infoBoxH);
+    octx.strokeStyle = 'rgba(212,162,76,0.6)';
+    octx.lineWidth = 1;
+    octx.strokeRect(infoBoxX, infoBoxY, infoBoxW, infoBoxH);
+    octx.fillStyle = '#e8e6df';
+    octx.textAlign = 'left';
+    infoLines.forEach(function(line, li){
+      octx.fillText(line, infoBoxX + 7, infoBoxY + 14 + li*15);
+    });
+  }
+
+  function pointerFromEvent(e){
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  canvas.addEventListener('mousemove', function(e){
+    const p = pointerFromEvent(e);
+    handleMove(p.x, p.y);
+  });
+  canvas.addEventListener('touchmove', function(e){
+    const p = pointerFromEvent(e);
+    handleMove(p.x, p.y);
+  }, {passive:true});
+  canvas.addEventListener('mouseleave', function(){ octx.clearRect(0,0,overlay.width, overlay.height); });
+
+  const resizeObs = new ResizeObserver(function(){ resizeOverlay(); });
+  resizeObs.observe(canvas);
+}
+
+function renderReadout(idx, name){
+  const el = document.getElementById('readout-'+idx);
+  if(!el) return;
+  const lb = DATA[name].last_bands;
+  const rows = [['+3σ',lb['3']],['+2σ',lb['2']],['+1σ',lb['1']],['中軸',lb['0']],
+                ['-1σ',lb['-1']],['-2σ',lb['-2']],['-3σ',lb['-3']],['現時最高',DATA[name].last_value]];
+  el.innerHTML = rows.map(function(row){
+    return '<div class="cell"><div class="k">' + row[0] + '</div><div class="v">' + formatNum(row[1]) + '</div></div>';
+  }).join('');
+}
+
+// ---- Fullscreen ----
+let currentFsName = null;
+let currentFsIsHsiPe = false;
+
+function openFullscreen(name, isHsiPe){
+  currentFsName = name;
+  currentFsIsHsiPe = !!isHsiPe;
+  // 清走舊嘅 chartState，避免上一個資產嘅座標系統殘留，
+  // 導致十字準星喺新資產度計錯數值 (呢個係比特幣個問題嘅根源:
+  // value range 特別大，一個舊座標系統嘅殘留誤差會被放大到好誇張)
+  delete chartState['fullscreen-canvas'];
+  document.getElementById('fs-title').textContent = isHsiPe ? '恆生指數 市盈率標準差通道' : name;
+  document.getElementById('fullscreen-overlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  // 用兩層 requestAnimationFrame，確保個 overlay 有足夠時間完成
+  // 版面編排 (layout) 先至讀取佢嘅實際尺寸，唔會用到舊尺寸
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      renderFullscreen();
+      setupCrosshair('fullscreen-canvas');
+    });
+  });
+}
+function renderFullscreen(){
+  if(currentFsIsHsiPe){
+    drawChart('fullscreen-canvas', HSI_PE_DATA.dates, HSI_PE_DATA.values, HSI_PE_DATA.bands, HSI_PE_DATA.use_log,
+      HSI_PE_DATA.marker, {padL: 90, fontSize: 13, futureDates: HSI_PE_DATA.future_dates || []});
+  } else {
+    const info = DATA[currentFsName];
+    if(!info) return;
+    drawChart('fullscreen-canvas', info.dates, info.values, info.bands, info.use_log,
+      null, {padL: 90, fontSize: 13, highs: info.highs, lows: info.lows, closes: info.closes, futureDates: info.future_dates || []});
+  }
+}
+function closeFullscreen(){
+  document.getElementById('fullscreen-overlay').classList.remove('active');
+  document.body.style.overflow = '';
+  currentFsName = null;
+  currentFsIsHsiPe = false;
+}
+document.getElementById('fullscreen-overlay').addEventListener('click', function(e){
+  if(e.target.id === 'fullscreen-overlay') closeFullscreen();
+});
+window.addEventListener('resize', function(){
+  if(currentFsName || currentFsIsHsiPe){
+    renderFullscreen();
+    setupCrosshair('fullscreen-canvas');
+  }
+});
+
+// ---- Render each asset card (defensive: one failing chart won't stop the rest) ----
+NAMES.forEach(function(name, i){
+  try {
+    const info = DATA[name];
+    if(!info || !info.dates || !info.dates.length){
+      throw new Error('冇數據 (下載失敗或空白)');
+    }
+    const card = document.createElement('div');
+    card.className = 'chartcard';
+    card.id = 'card-canvas-' + i;
+    const parabolicTag = info.is_parabolic ? ' · 拋物線/冪律通道' : '';
+    card.innerHTML =
+      '<button class="card-close-btn" title="移除呢張圖" onclick="closeChartCard(\'' + card.id + '\')">✕</button>' +
+      '<h2>' + name + parabolicTag + '</h2>' +
+      '<div class="chartwrap">' +
+        '<span class="chart-click-hint">點擊放大</span>' +
+        '<canvas id="canvas-' + i + '" height="360"></canvas>' +
+        '<div class="legend">' +
+          '<span><span class="swatch" style="background:#e8e6df"></span>最高價 (High)</span>' +
+          '<span><span class="swatch" style="background:#c9605a"></span>中軸</span>' +
+          '<span><span class="swatch" style="background:#6fae7c"></span>±1σ</span>' +
+          '<span><span class="swatch" style="background:#5b8fd4"></span>±2σ</span>' +
+          '<span><span class="swatch" style="background:#d4a24c"></span>±3σ</span>' +
+        '</div>' +
+        '<div class="readout" id="readout-' + i + '"></div>' +
+        '<div class="note">最後數據日期: ' + info.last_date + ' · 最高: ' + formatNum(info.last_value) +
+          (info.last_low != null ? ' · 當日最低: ' + formatNum(info.last_low) : '') +
+          ' · 通道右側淡金色區域為未來延伸估算，非實際數據' +
+          '</div>' +
+      '</div>';
+    mainEl.appendChild(card);
+
+    drawChart('canvas-'+i, info.dates, info.values, info.bands, info.use_log, null,
+      {highs: info.highs, lows: info.lows, closes: info.closes, futureDates: info.future_dates || []});
+    renderReadout(i, name);
+    setupCrosshair('canvas-'+i);
+    document.getElementById('canvas-'+i).addEventListener('click', function(){ openFullscreen(name, false); });
+    attachCardExtras('card-canvas-'+i, name, info.ticker || null);
+  } catch(err) {
+    // 用戶要求: 攞唔到數據嘅資產完全唔顯示 (乾淨手法，冇錯誤卡片)。
+    // 淨係印喺瀏覽器 console 度 (撳F12可以睇到)，方便你自己排查，
+    // 但唔會喺報告版面度出現任何空白/錯誤框。
+    console.error('Chart render failed for', name, err);
+  }
+});
+
+// ---- HSI PE channel card (year-by-year hardcode data, independent of price data) ----
+(function(){
+  try {
+    const peMean = HSI_PE_DATA.values.reduce((a,b)=>a+b,0) / HSI_PE_DATA.values.length;
+    const peVariance = HSI_PE_DATA.values.reduce((a,b)=>a+(b-peMean)*(b-peMean),0) / HSI_PE_DATA.values.length;
+    const peSd = Math.sqrt(peVariance);
+
+    const card = document.createElement('div');
+    card.className = 'chartcard';
+    card.id = 'card-canvas-hsi-pe';
+    card.innerHTML =
+      '<button class="card-close-btn" title="移除呢張圖" onclick="closeChartCard(\'' + card.id + '\')">✕</button>' +
+      '<h2>恆生指數 市盈率 (2011-2026 逐年 hardcode 數值)</h2>' +
+      '<div class="chartwrap">' +
+        '<span class="chart-click-hint">點擊放大</span>' +
+        '<canvas id="canvas-hsi-pe" height="300"></canvas>' +
+        '<div class="legend">' +
+          '<span><span class="swatch" style="background:#c9605a"></span>中軸 (平均) ' + peMean.toFixed(2) + '</span>' +
+          '<span><span class="swatch" style="background:#6fae7c"></span>±1σ ' + (peMean+peSd).toFixed(2) + '/' + (peMean-peSd).toFixed(2) + '</span>' +
+          '<span><span class="swatch" style="background:#5b8fd4"></span>±2σ ' + (peMean+2*peSd).toFixed(2) + '/' + (peMean-2*peSd).toFixed(2) + '</span>' +
+          '<span><span class="swatch" style="background:#d4a24c"></span>±3σ ' + (peMean+3*peSd).toFixed(2) + '/' + (peMean-3*peSd).toFixed(2) + '</span>' +
+        '</div>' +
+        '<div class="note">最新一年市盈率: ' + HSI_PE_DATA.last_value + ' (' + HSI_PE_DATA.last_date + ')</div>' +
+      '</div>';
+    mainEl.appendChild(card);
+
+    drawChart('canvas-hsi-pe', HSI_PE_DATA.dates, HSI_PE_DATA.values, HSI_PE_DATA.bands, HSI_PE_DATA.use_log, HSI_PE_DATA.marker);
+    setupCrosshair('canvas-hsi-pe');
+    document.getElementById('canvas-hsi-pe').addEventListener('click', function(){ openFullscreen('恆生指數市盈率', true); });
+    attachCardExtras('card-canvas-hsi-pe', '恆生指數市盈率', null);
+  } catch(err) {
+    console.error('HSI PE chart render failed', err);
+  }
+})();
+
+// ============================================================================
+// 搜尋股票代號功能: 而家改用本機 Python 伺服器嘅 /api/search endpoint
+// (用 yfinance/Yahoo Finance 即時攞完整歷史，冇任何第三方免費 API
+// tier 嘅年期限制)，唔再直接喺瀏覽器 fetch 第三方數據商。
+// 呢個功能需要 python market_channels.py 保持行緊 (即係本機伺服器
+// 保持運作)；如果你直接雙擊 HTML 檔案打開 (file:// 模式)，或者
+// Python script 已經停咗，搜尋會失敗。
+// ============================================================================
+let searchedTickerCount = 0;
+
+function computeChannelFromApiResponse(apiData){
+  // /api/search 已經幫手用 Python 計好晒 bands/last_bands，
+  // 呢度淨係做少少格式轉換，等佢同前端其他函數用嘅結構一致。
+  const bands = {};
+  Object.keys(apiData.bands).forEach(function(k){ bands[k] = apiData.bands[k]; });
+  return { bands: bands, lastBands: apiData.last_bands };
+}
+
+// 用戶要求可以同時搜尋、同時下載4-6隻股票，唔使等上一隻完成先可以
+// 打下一隻。做法: 撳「加入」嗰刻即刻清空輸入框、將個ticker加入
+// 一個「下載緊」清單度顯示 (唔會再淨係得一句狀態文字互相覆蓋)，
+// 然後background噉繼續個fetch，完成 (成功或者失敗) 先至將呢個
+// ticker從「下載緊」清單移除。多隻股票嘅fetch()自然會並行執行
+// (瀏覽器本身容許同一個origin有多個並行連線)，配合Python server
+// 而家已經改用多線程 (ThreadingMixIn)，先可以真正做到同時下載，
+// 唔會逐個排隊。
+let pendingDownloads = {};  // ticker -> true，用嚟畫「下載緊」清單
+
+function renderPendingDownloads(){
+  const status = document.getElementById('ticker-search-status');
+  const pending = Object.keys(pendingDownloads);
+  if(pending.length === 0){
+    return;
+  }
+  status.style.color = '#8b8f99';
+  status.textContent = '下載緊: ' + pending.join(', ') + ' ...';
+}
+
+async function handleTickerSearch(){
+  const input = document.getElementById('ticker-search-input');
+  const status = document.getElementById('ticker-search-status');
+  const rawTicker = (input.value || '').trim();
+
+  if(!rawTicker){
+    status.style.color = '#c9605a';
+    status.textContent = '請先輸入股票代號';
+    return;
+  }
+
+  // 即刻清空輸入框，等用戶可以馬上打下一隻嘅代號，唔使等呢隻
+  // 下載完成。
+  input.value = '';
+  const tickerUpper = rawTicker.toUpperCase();
+  pendingDownloads[tickerUpper] = true;
+  renderPendingDownloads();
+
+  try {
+    const resp = await fetch('/api/search?ticker=' + encodeURIComponent(rawTicker));
+    const apiData = await resp.json();
+
+    if(apiData.error){
+      throw new Error(apiData.error);
+    }
+
+    const dates = apiData.dates;
+    const values = apiData.values;
+    const highs = apiData.highs;
+    const lows = apiData.lows;
+    const closes = apiData.closes;
+    const futureDates = apiData.future_dates || [];
+    const { bands, lastBands } = computeChannelFromApiResponse(apiData);
+
+    searchedTickerCount++;
+    const cardId = 'search-' + searchedTickerCount;
+    const displayName = apiData.ticker + ' (自訂搜尋，數據來源: ' + apiData.source + ')';
+
+    DATA[displayName] = {
+      dates: dates, values: values, highs: highs, lows: lows, closes: closes,
+      bands: bands, last_bands: lastBands, future_dates: futureDates,
+      last_value: values[values.length-1], last_date: dates[dates.length-1],
+      use_log: apiData.use_log, is_parabolic: false
+    };
+
+    const card = document.createElement('div');
+    card.className = 'chartcard';
+    card.id = 'card-' + cardId;
+    card.innerHTML =
+      '<button class="card-close-btn" title="移除呢張圖" onclick="closeChartCard(\'' + card.id + '\')">✕</button>' +
+      '<h2>' + displayName + '</h2>' +
+      '<div class="chartwrap">' +
+        '<span class="chart-click-hint">點擊放大</span>' +
+        '<canvas id="canvas-' + cardId + '" height="360"></canvas>' +
+        '<div class="legend">' +
+          '<span><span class="swatch" style="background:#e8e6df"></span>最高價 (High)</span>' +
+          '<span><span class="swatch" style="background:#c9605a"></span>中軸</span>' +
+          '<span><span class="swatch" style="background:#6fae7c"></span>±1σ</span>' +
+          '<span><span class="swatch" style="background:#5b8fd4"></span>±2σ</span>' +
+          '<span><span class="swatch" style="background:#d4a24c"></span>±3σ</span>' +
+        '</div>' +
+        '<div class="readout" id="readout-' + cardId + '"></div>' +
+        '<div class="note">數據由 ' + dates[0] + ' 開始 · 最後數據日期: ' + dates[dates.length-1] + ' · 最高: ' + formatNum(values[values.length-1]) +
+          ' · 通道右側淡金色區域為未來延伸估算，非實際數據' +
+          ' · 呢張圖淨係喺呢次打開報告有效，唔會儲存落 Python 腳本</div>' +
+      '</div>';
+    mainEl.insertBefore(card, mainEl.firstChild);
+
+    drawChart('canvas-'+cardId, dates, values, bands, apiData.use_log, null,
+      {highs: highs, lows: lows, closes: closes, futureDates: futureDates});
+    renderReadout(cardId, displayName);
+    setupCrosshair('canvas-'+cardId);
+    document.getElementById('canvas-'+cardId).addEventListener('click', function(){ openFullscreen(displayName, false); });
+    attachCardExtras('card-' + cardId, displayName, apiData.ticker);
+
+    delete pendingDownloads[tickerUpper];
+    if(Object.keys(pendingDownloads).length === 0){
+      status.style.color = '#6fae7c';
+      status.textContent = '已加入 ' + apiData.ticker + ' (數據由 ' + dates[0] + ' 開始)';
+    } else {
+      status.style.color = '#6fae7c';
+      status.textContent = '已加入 ' + apiData.ticker + '，';
+      renderPendingDownloads();
+    }
+  } catch(err) {
+    delete pendingDownloads[tickerUpper];
+    let hint = '';
+    if(window.location.protocol === 'file:'){
+      hint = ' (好可能原因: 你係直接雙擊打開呢個HTML檔案，冇經過本機伺服器，搜尋功能需要 ' +
+             'python market_channels.py 保持行緊先得。用 run_market_channels.bat 打開就會自動處理埋呢一步)';
+    } else {
+      hint = ' (可能原因: python market_channels.py 已經停咗、代號搵唔到，或者網絡連線問題)';
+    }
+    status.style.color = '#c9605a';
+    status.textContent = tickerUpper + ' 失敗: ' + (err.message || err) + hint;
+    console.error('Ticker search failed', err);
+    if(Object.keys(pendingDownloads).length > 0){
+      renderPendingDownloads();
+    }
+  }
+}
+
+document.getElementById('ticker-search-input').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') handleTickerSearch();
+});
+
+// ============================================================================
+// Function 1: PE 比較
+// 用戶手動輸入主要股票 + 最多3隻競爭對手 ticker (系統唔會自動搵
+// 競爭對手)，經本機伺服器嘅 /api/pe-compare 攞返 Trailing PE、
+// Forward PE (下一年，analyst共識)，同 2/3/4年後嘅估算PE
+// (用5年增長率自行推算，並非analyst實際共識，已經喺畫面度清楚
+// 標示)。用一個橫向表格顯示，主要股票同競爭對手並排比較。
+// ============================================================================
+function formatPeValue(v){
+  if(v === null || v === undefined) return '無數據';
+  return v.toFixed(2);
+}
+
+// ============================================================================
+// 每張圖卡片自己嘅 PE 比較 + 自動 Risk/Return (用戶要求:
+// "每個graph都要有比較PE按鈕"、"每次加入隻股票都自動畀PE同
+// risk/return")。
+//
+// attachCardExtras(cardId, displayName, ticker) 會:
+//   1. 幫呢張卡片插入一個「比較PE」按鈕 + 收埋嘅mini panel
+//      (3個競爭對手輸入 + 比較掣 + 結果)。如果冇 ticker (例如
+//      恆指市盈率呢張圖，本身冇對應嘅Yahoo ticker)，個panel會
+//      即時顯示「無數據」，唔會嘗試打API。
+//   2. 如果有 ticker，會自動 (毋須用戶郁手) 攞返呢隻資產嘅
+//      Risk/Return，加落最底嗰個全局表格度。冇 ticker 就跳過
+//      呢一步。
+// ============================================================================
+let cardPeCounter = 0;
+
+function attachCardExtras(cardId, displayName, ticker){
+  const card = document.getElementById(cardId);
+  if(!card) return;
+  const chartwrap = card.querySelector('.chartwrap');
+  if(!chartwrap) return;
+
+  cardPeCounter++;
+  const peSectionId = 'pe-section-' + cardPeCounter;
+  const panelId = 'pe-panel-' + cardPeCounter;
+
+  const section = document.createElement('div');
+  section.className = 'card-pe-section';
+  section.id = peSectionId;
+
+  if(!ticker){
+    // 冇對應嘅 Yahoo ticker (例如恆指市盈率呢類自家整理嘅數據)，
+    // 用戶要求依然要有個按鈕，但即時顯示「無數據」，唔使打API。
+    section.innerHTML =
+      '<button class="card-pe-toggle-btn" disabled>比較 PE</button>' +
+      '<div class="card-pe-nodata">無數據 (呢個資產冇對應嘅股票代號，唔適用PE比較)</div>';
+    chartwrap.appendChild(section);
+    return;
+  }
+
+  section.innerHTML =
+    '<button class="card-pe-toggle-btn" onclick="toggleCardPePanel(\'' + panelId + '\')">比較 PE</button>' +
+    '<div class="card-pe-panel" id="' + panelId + '">' +
+      '<div>' +
+        '<input type="text" class="pe-comp-input" placeholder="競爭對手1" data-slot="1" />' +
+        '<input type="text" class="pe-comp-input" placeholder="競爭對手2 (可留空)" data-slot="2" />' +
+        '<input type="text" class="pe-comp-input" placeholder="競爭對手3 (可留空)" data-slot="3" />' +
+        '<button onclick="handlePeCompareForCard(\'' + panelId + '\', \'' + ticker + '\')">比較</button>' +
+        '<span class="card-pe-status" id="' + panelId + '-status"></span>' +
+      '</div>' +
+      '<div class="card-pe-result" id="' + panelId + '-result"></div>' +
+    '</div>';
+  chartwrap.appendChild(section);
+
+  // 自動 (毋須用戶郁手) 幫呢隻股票攞 Risk/Return，加落最底表格。
+  if(riskReturnTickers.indexOf(ticker) === -1){
+    riskReturnTickers.push(ticker);
+    fetchAndRenderRiskReturn(ticker).catch(function(err){
+      console.error('自動 Risk/Return 計算失敗 (' + ticker + ')', err);
+    });
+  }
+}
+
+function toggleCardPePanel(panelId){
+  const panel = document.getElementById(panelId);
+  if(panel) panel.classList.toggle('active');
+}
+
+async function handlePeCompareForCard(panelId, primaryTicker){
+  const panel = document.getElementById(panelId);
+  const status = document.getElementById(panelId + '-status');
+  const resultDiv = document.getElementById(panelId + '-result');
+  const inputs = panel.querySelectorAll('.pe-comp-input');
+  const competitors = Array.from(inputs)
+    .map(function(inp){ return (inp.value || '').trim(); })
+    .filter(function(v){ return v; });
+
+  status.style.color = '#8b8f99';
+  status.textContent = '計算緊 PE 數據...';
+
+  try {
+    const url = '/api/pe-compare?primary=' + encodeURIComponent(primaryTicker) +
+      (competitors.length ? '&competitors=' + encodeURIComponent(competitors.join(',')) : '');
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if(data.error){
+      throw new Error(data.error);
+    }
+
+    const allStocks = [data.primary].concat(data.competitors || []);
+
+    let tableHtml = '<div class="pe-table-wrap"><table><thead><tr>' +
+      '<th>股票</th><th>現價</th><th>Trailing PE</th><th>Forward PE (下一年)</th>' +
+      '<th>估算PE (2年後)</th><th>估算PE (3年後)</th><th>估算PE (4年後)</th>' +
+      '</tr></thead><tbody>';
+
+    allStocks.forEach(function(s){
+      if(s.error){
+        tableHtml += '<tr><td>' + s.ticker + '</td><td colspan="6" style="color:#c9605a;text-align:left;">攞取失敗: ' + s.error + '</td></tr>';
+        return;
+      }
+      const est = s.estimated_pe || {};
+      const usedFallback = s.pe_source && s.pe_source.indexOf('Alpha Vantage') !== -1 && s.pe_source.indexOf('都失敗') === -1;
+      const sourceNote = usedFallback ? '<span class="estimated-tag" style="color:#5b8fd4;"> (數據源: Alpha Vantage，yfinance無提供)</span>' : '';
+      tableHtml += '<tr>' +
+        '<td>' + s.ticker + sourceNote + '</td>' +
+        '<td>' + formatPeValue(s.current_price) + '</td>' +
+        '<td>' + formatPeValue(s.trailing_pe) + '</td>' +
+        '<td>' + formatPeValue(s.forward_pe) + '</td>' +
+        '<td>' + formatPeValue(est['2y']) + '<span class="estimated-tag"> (估算)</span></td>' +
+        '<td>' + formatPeValue(est['3y']) + '<span class="estimated-tag"> (估算)</span></td>' +
+        '<td>' + formatPeValue(est['4y']) + '<span class="estimated-tag"> (估算)</span></td>' +
+        '</tr>';
+    });
+
+    tableHtml += '</tbody></table>' +
+      '<div class="pe-warning">PE唔好飄離開太遠想買嗰隻 Forward P/E 比 Current P/E 更高，可能代表市場預期未來盈利下降</div>' +
+      '<div class="pe-warning" style="margin-top:6px;">' + (data.note || '') + '</div>' +
+      '</div>';
+
+    resultDiv.innerHTML = tableHtml;
+    status.style.color = '#6fae7c';
+    status.textContent = '已完成比較';
+  } catch(err) {
+    status.style.color = '#c9605a';
+    status.textContent = '失敗: ' + (err.message || err);
+    console.error('PE compare failed', err);
+  }
+}
+
+// ============================================================================
+// Function 2: Risk/Return
+// 每加一隻股票 (無論係內嵌資產定係用戶搜尋加入)，都會自動經
+// /api/risk-return 計算 CAGR (回報) 同年化波幅 (風險)，加落最底
+// 嘅全局表格。日期範圍係全局共用 (淨係得一個控制器，喺表格下面)，
+// 改咗就會一次過重新計算表格入面所有股票。
+// ============================================================================
+let riskReturnTickers = [];  // 記住已加入嘅 ticker，等重新計算日期範圍嗰陣可以逐個重新攞
+
+function getRrDateRange(){
+  const start = document.getElementById('rr-start-date').value || '2000-01-01';
+  const end = document.getElementById('rr-end-date').value || new Date().toISOString().slice(0,10);
+  return { start: start, end: end };
+}
+
+let riskReturnPoints = {};  // ticker -> {cagr, volatility} 畀 scatter plot 用
+
+function renderRiskReturnRow(result){
+  const tbody = document.getElementById('rr-table-body');
+  let row = document.getElementById('rr-row-' + result.ticker);
+  if(!row){
+    row = document.createElement('tr');
+    row.id = 'rr-row-' + result.ticker;
+    tbody.appendChild(row);
+  }
+
+  if(result.error){
+    row.innerHTML = '<td>' + result.ticker + '</td><td colspan="3" style="color:#c9605a;text-align:left;">失敗: ' + result.error + '</td>' +
+      '<td><button class="rr-row-remove-btn" onclick="removeRiskReturnRow(\'' + result.ticker + '\')">移除</button></td>';
+    delete riskReturnPoints[result.ticker];
+    drawRiskReturnScatter();
+    return;
+  }
+
+  const cagrText = (result.cagr !== null && result.cagr !== undefined) ? result.cagr.toFixed(2) + '%' : '無數據';
+  const volText = (result.annualized_volatility !== null && result.annualized_volatility !== undefined) ? result.annualized_volatility.toFixed(2) + '%' : '無數據';
+  const rangeText = (result.actual_start_date || '?') + ' ~ ' + (result.actual_end_date || '?');
+
+  row.innerHTML =
+    '<td>' + result.ticker + '</td>' +
+    '<td>' + cagrText + '</td>' +
+    '<td>' + volText + '</td>' +
+    '<td style="font-size:0.7rem;color:var(--muted);">' + rangeText + '</td>' +
+    '<td><button class="rr-row-remove-btn" onclick="removeRiskReturnRow(\'' + result.ticker + '\')">移除</button></td>';
+
+  if(result.cagr !== null && result.cagr !== undefined &&
+     result.annualized_volatility !== null && result.annualized_volatility !== undefined){
+    riskReturnPoints[result.ticker] = { cagr: result.cagr, volatility: result.annualized_volatility };
+  } else {
+    delete riskReturnPoints[result.ticker];
+  }
+  drawRiskReturnScatter();
+}
+
+// Risk/Return scatter plot: X軸=Risk (年化波幅)，Y軸=Return (CAGR)。
+// 用戶要求將個table plot成一個圖，等可以一眼睇到邊隻股票
+// high-risk-high-return，邊隻low-risk-low-return。
+function drawRiskReturnScatter(){
+  const canvas = document.getElementById('rr-scatter-canvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 500, H = 380;
+  canvas.width = Math.max(1, W*dpr); canvas.height = Math.max(1, H*dpr);
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+
+  const padL = 70, padR = 30, padT = 20, padB = 40;
+  const plotW = Math.max(10, W-padL-padR), plotH = Math.max(10, H-padT-padB);
+
+  const tickers = Object.keys(riskReturnPoints);
+  if(tickers.length === 0){
+    ctx.fillStyle = '#8b8f99';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('未有股票加入 Risk/Return 分析', W/2, H/2);
+    return;
+  }
+
+  const risks = tickers.map(function(t){ return riskReturnPoints[t].volatility; });
+  const returns = tickers.map(function(t){ return riskReturnPoints[t].cagr; });
+
+  let minRisk = safeMin(risks), maxRisk = safeMax(risks);
+  let minReturn = safeMin(returns), maxReturn = safeMax(returns);
+  // 留少少邊，唔好啱啱好貼住畫布邊緣
+  const riskPad = (maxRisk - minRisk) * 0.15 || 5;
+  const returnPad = (maxReturn - minReturn) * 0.15 || 5;
+  minRisk -= riskPad; maxRisk += riskPad;
+  minReturn -= returnPad; maxReturn += returnPad;
+  if(minRisk === maxRisk){ minRisk -= 5; maxRisk += 5; }
+  if(minReturn === maxReturn){ minReturn -= 5; maxReturn += 5; }
+
+  function xToPx(risk){ return padL + ((risk-minRisk)/(maxRisk-minRisk))*plotW; }
+  function yToPx(ret){ return padT + plotH - ((ret-minReturn)/(maxReturn-minReturn))*plotH; }
+
+  // 格線 + 座標軸數字
+  ctx.strokeStyle = '#2b2f38';
+  ctx.fillStyle = '#8b8f99';
+  ctx.font = '10px monospace';
+  const xTicks = 6, yTicks = 6;
+  ctx.textAlign = 'center';
+  for(let i=0;i<=xTicks;i++){
+    const risk = minRisk + (i/xTicks)*(maxRisk-minRisk);
+    const px = xToPx(risk);
+    ctx.beginPath(); ctx.moveTo(px, padT); ctx.lineTo(px, padT+plotH); ctx.stroke();
+    ctx.fillText(risk.toFixed(1)+'%', px, padT+plotH+16);
+  }
+  ctx.textAlign = 'right';
+  for(let i=0;i<=yTicks;i++){
+    const ret = minReturn + (i/yTicks)*(maxReturn-minReturn);
+    const py = yToPx(ret);
+    ctx.beginPath(); ctx.moveTo(padL, py); ctx.lineTo(padL+plotW, py); ctx.stroke();
+    ctx.fillText(ret.toFixed(1)+'%', padL-8, py+3);
+  }
+
+  // 0% return 嗰條橫線特別標示 (盈虧分界)
+  if(minReturn < 0 && maxReturn > 0){
+    const zeroPy = yToPx(0);
+    ctx.strokeStyle = 'rgba(212,162,76,0.5)';
+    ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(padL, zeroPy); ctx.lineTo(padL+plotW, zeroPy); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // 軸標題
+  ctx.fillStyle = '#d4a24c';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('Risk (年化波幅) →', padL+plotW/2, H-6);
+  ctx.save();
+  ctx.translate(16, padT+plotH/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText('Return (CAGR) →', 0, 0);
+  ctx.restore();
+
+  // 逐個股票畫一個點 + 標籤
+  const colors = ['#d4a24c','#6fae7c','#5b8fd4','#c9605a','#e8e6df','#8a6f3d'];
+  tickers.forEach(function(ticker, i){
+    const point = riskReturnPoints[ticker];
+    const px = xToPx(point.volatility), py = yToPx(point.cagr);
+    const color = colors[i % colors.length];
+
+    ctx.beginPath();
+    ctx.fillStyle = color;
+    ctx.arc(px, py, 6, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#15171c';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#e8e6df';
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(ticker, px+9, py+4);
+  });
+}
+window.addEventListener('resize', function(){ drawRiskReturnScatter(); });
+
+function removeRiskReturnRow(ticker){
+  const row = document.getElementById('rr-row-' + ticker);
+  if(row) row.remove();
+  riskReturnTickers = riskReturnTickers.filter(function(t){ return t !== ticker; });
+  delete riskReturnPoints[ticker];
+  drawRiskReturnScatter();
+}
+
+async function fetchAndRenderRiskReturn(ticker){
+  const { start, end } = getRrDateRange();
+  const resp = await fetch('/api/risk-return?ticker=' + encodeURIComponent(ticker) +
+    '&start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end));
+  const data = await resp.json();
+  renderRiskReturnRow(data);
+  return data;
+}
+
+async function recomputeAllRiskReturn(){
+  const btn = document.getElementById('rr-recompute-btn');
+  const status = document.getElementById('rr-recompute-status');
+  if(riskReturnTickers.length === 0){
+    status.style.color = '#c9605a';
+    status.textContent = '未有加入任何股票';
+    return;
+  }
+  btn.disabled = true;
+  status.style.color = '#8b8f99';
+  status.textContent = '重新計算緊全部 ' + riskReturnTickers.length + ' 隻股票...';
+
+  try {
+    for(const ticker of riskReturnTickers){
+      await fetchAndRenderRiskReturn(ticker);
+    }
+    status.style.color = '#6fae7c';
+    status.textContent = '已完成重新計算';
+  } catch(err) {
+    status.style.color = '#c9605a';
+    status.textContent = '失敗: ' + (err.message || err);
+    console.error('Risk/Return recompute failed', err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// 頁面載入時，將結束日期預設做「今日」
+(function(){
+  const endInput = document.getElementById('rr-end-date');
+  if(endInput && !endInput.value){
+    endInput.value = new Date().toISOString().slice(0,10);
+  }
+})();
+
+</script>
+</body>
+</html>
