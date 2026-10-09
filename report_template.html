@@ -243,11 +243,11 @@
 </div>
 
 
-<div id="mstr-nav-panel" style="padding:0 24px;margin-bottom:30px;">
-  <h2 style="padding:0 24px;">MSTR NAV 分析 (比特幣持倉價值)</h2>
+<div id="mstr-nav-panel" style="padding:0 24px;margin-bottom:30px;max-width:720px;">
+  <h2 style="padding:0 24px;">MSTR NAV 分析: 股價 ÷ BTC 價 (sats)</h2>
   <div class="rr-chart-wrap">
-    <span class="chart-click-hint">MSTR 股價 ÷ BTC 價 (以 sats 計)</span>
-    <canvas id="mstr-nav-canvas" height="320" style="cursor:default;"></canvas>
+    <span class="chart-click-hint">點擊放大</span>
+    <canvas id="mstr-nav-canvas" height="260"></canvas>
   </div>
   <div class="rr-table-wrap">
     <div class="readout" id="mstr-nav-readout"></div>
@@ -310,7 +310,12 @@ function renderMstrNav(){
     ['每股 BTC 淨值', '$' + d.nav_per_share], ['MSTR 股價', '$' + d.mstr_price], ['BTC 價', '$' + d.btc_price.toLocaleString()], ['折/溢價', ((d.mnav-1)*100).toFixed(1) + '%']];
   ro.innerHTML = cells.map(function(c){ return '<div class="cell"><div class="k">' + c[0] + '</div><div class="v">' + c[1] + '</div></div>'; }).join('');
   note.innerHTML = '簡化 mNAV = 市值 ÷ (持幣量 × BTC價)，唔計債務、優先股同現金，同 Strategy 官方 mNAV 有出入。持幣量同股數係手動填 (見 Python 設定)，只係快照，截至 ' + d.last_date + '。<br>圖表係 MSTR 股價換算成 BTC 嘅比率: 比率升 = MSTR 相對 BTC 跑贏 (溢價擴大或每股持幣增加)。呢個唔係歷史 NAV 曲線，因為歷史持倉表 Yahoo 冇提供。';
-  drawChart('mstr-nav-canvas', d.dates, d.ratio_sats, {}, false, null, {height:320});
+  const vl = 'MSTR/BTC (sats)';
+  drawChart('mstr-nav-canvas', d.dates, d.ratio_sats, {}, false, null, {height:260, valueLabel: vl});
+  setupCrosshair('mstr-nav-canvas');
+  document.getElementById('mstr-nav-canvas').addEventListener('click', function(){
+    openFullscreen('MSTR NAV: 股價 ÷ BTC 價 (sats)', false, {dates: d.dates, values: d.ratio_sats, valueLabel: vl});
+  });
 }
 window.addEventListener('load', renderMstrNav);
 
@@ -517,7 +522,7 @@ function drawChart(canvasId, dates, values, bands, useLog, markerPoint, opts){
     padL: padL, padR: padR, padT: padT, padB: padB, plotW: plotW, plotH: plotH, W: W, H: H,
     lo: lo, hi: hi, span: span, useLog: useLog, dates: dates, values: values, allDates: allDates,
     totalLen: totalLen, nFuture: nFuture,
-    highs: highs, lows: lows, closes: closes, bands: bands,
+    highs: highs, lows: lows, closes: closes, bands: bands, valueLabel: opts.valueLabel || null,
     xToPx: xToPx, yToPx: yToPx,
     pxToValue: function(py){
       const frac = (padT + plotH - py) / plotH;
@@ -666,7 +671,7 @@ function setupCrosshair(canvasId){
         infoLines.push(nearestBand.label + ' 估算值: ' + formatNum(nearestBand.value));
       }
     } else {
-      infoLines = ['日期: ' + date, '最高: ' + formatNum(actualHigh)];
+      infoLines = ['日期: ' + date, (state.valueLabel || '最高') + ': ' + formatNum(actualHigh)];
       if(actualClose != null){
         infoLines.push('收市: ' + formatNum(actualClose));
       }
@@ -754,7 +759,10 @@ function renderReadout(idx, name){
 let currentFsName = null;
 let currentFsIsHsiPe = false;
 
-function openFullscreen(name, isHsiPe){
+let currentFsCustom = null;
+function openFullscreen(name, isHsiPe, custom){
+  currentFsCustom = custom || null;
+  document.getElementById('fs-legend').style.display = custom ? 'none' : '';
   currentFsName = name;
   currentFsIsHsiPe = !!isHsiPe;
   // 清走舊嘅 chartState，避免上一個資產嘅座標系統殘留，
@@ -774,6 +782,11 @@ function openFullscreen(name, isHsiPe){
   });
 }
 function renderFullscreen(){
+  if(currentFsCustom){
+    drawChart('fullscreen-canvas', currentFsCustom.dates, currentFsCustom.values, {}, false, null,
+      {padL: 90, fontSize: 13, valueLabel: currentFsCustom.valueLabel});
+    return;
+  }
   if(currentFsIsHsiPe){
     drawChart('fullscreen-canvas', HSI_PE_DATA.dates, HSI_PE_DATA.values, HSI_PE_DATA.bands, HSI_PE_DATA.use_log,
       HSI_PE_DATA.marker, {padL: 90, fontSize: 13, futureDates: HSI_PE_DATA.future_dates || []});
@@ -789,6 +802,7 @@ function closeFullscreen(){
   document.body.style.overflow = '';
   currentFsName = null;
   currentFsIsHsiPe = false;
+  currentFsCustom = null;
 }
 document.getElementById('fullscreen-overlay').addEventListener('click', function(e){
   if(e.target.id === 'fullscreen-overlay') closeFullscreen();
