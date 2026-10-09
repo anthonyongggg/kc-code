@@ -1,0 +1,47 @@
+name: Daily market report update
+
+on:
+  schedule:
+    # 每日 23:00 UTC = 香港時間朝早 07:00
+    - cron: "0 23 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install yfinance pandas numpy
+
+      - name: Generate report
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          MC_OUTPUT_DIR: ${{ runner.temp }}/mc_out
+        run: |
+          python market_channels.py
+          mkdir -p site
+          cp "$MC_OUTPUT_DIR/market_channels_report.html" site/index.html
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/index.html
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Daily report update $(date -u +'%Y-%m-%d')"
+            git push
+          fi
