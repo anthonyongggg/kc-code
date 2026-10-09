@@ -1,0 +1,3 @@
+# 純靜態網站：唔使 build，直接發佈 site 資料夾
+[build]
+  publish = "site"

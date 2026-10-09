@@ -428,7 +428,7 @@ except ImportError:
 
 SCRIPT_VERSION = "v5.5"
 
-DOCS_DIR = os.path.join(os.path.expanduser("~"), "Documents", "market_channels")
+DOCS_DIR = os.environ.get("MC_OUTPUT_DIR") or os.path.join(os.path.expanduser("~"), "Documents", "market_channels")
 os.makedirs(DOCS_DIR, exist_ok=True)
 
 # 資產清單: (顯示名稱, Yahoo Finance ticker, 是否用log scale, 是否用拋物線通道)
@@ -484,7 +484,7 @@ TEMPLATE_FILENAME = "report_template.html"
 # 由 1970年 Q1 開始，暫時係最長歷史嘅澳洲全國樓價 source。
 # 需要免費 API key: https://fredaccount.stlouisfed.org/apikeys
 # ----------------------------------------------------------------------------
-FRED_API_KEY = "2e6f889b0b06cb0879517031418c94d4"
+FRED_API_KEY = os.environ.get("FRED_API_KEY") or "2e6f889b0b06cb0879517031418c94d4"
 FRED_AU_HOUSING_SERIES_ID = "QAUN628BIS"  # Residential Property Prices for Australia
 
 # ----------------------------------------------------------------------------
@@ -502,7 +502,7 @@ FRED_AU_HOUSING_SERIES_ID = "QAUN628BIS"  # Residential Property Prices for Aust
 #      冇資料嗰陣個值會係字串 "None" (唔係 JSON null)，要特別處理。
 # 用戶已經有呢條 key (之前為咗 AU rent 功能攞嘅，而家攞嚟重用)。
 # ----------------------------------------------------------------------------
-ALPHA_VANTAGE_API_KEY = "6ZKSOG48WZYDUYK3"
+ALPHA_VANTAGE_API_KEY = os.environ.get("ALPHA_VANTAGE_API_KEY") or "6ZKSOG48WZYDUYK3"
 
 # ----------------------------------------------------------------------------
 # 本機網頁伺服器設定
@@ -521,7 +521,7 @@ ALPHA_VANTAGE_API_KEY = "6ZKSOG48WZYDUYK3"
 # 如果想要冇網址列/冇分頁嘅獨立顯示視窗 (kiosk-style panel)，
 # 先至將呢個設做 True，並且 pip install pywebview。
 # ----------------------------------------------------------------------------
-AUTO_OPEN_BROWSER = True
+AUTO_OPEN_BROWSER = not os.environ.get("CI")  # GitHub Actions 會自動設 CI=true，唔會開瀏覽器/server
 LOCAL_SERVER_PORT = 8000
 USE_PYWEBVIEW_PANEL = False
 
