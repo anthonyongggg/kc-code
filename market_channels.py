@@ -473,8 +473,9 @@ HSI_PE_BY_YEAR = {
     2023: 11.5,
     2024: 8.5,
     2025: 11.5,
-    2026: 13.5,
+    2026: 13.43,   # 2026-10-02 恒生指數公司官方每日市盈率 (經 CEIC)，之前係 13.5。想更新就改呢個數同下面個日期
 }
+HSI_PE_LATEST_DATE = "2026-10-02 (恒生指數公司官方數據，經 CEIC；其餘年份係你提供嘅逐年數)"
 
 TEMPLATE_FILENAME = "report_template.html"
 
@@ -866,6 +867,35 @@ MSTR_SHARES_OUT = 333913000
 MSTR_NAV_START = "2020-08-01"   # Strategy 開始買比特幣嘅月份
 
 
+def compute_yield_curve():
+    """用 FRED 嘅 DGS2 (2年期) 同 DGS10 (10年期) 美國國債孳息率 (日數據，1976年起)，
+    計出倒掛 (2年期 > 10年期) 嘅時段。FRED 係實際孳息率，同期貨價格走勢一致。"""
+    try:
+        d2, v2 = fetch_fred_series("DGS2", FRED_API_KEY)
+        d10, v10 = fetch_fred_series("DGS10", FRED_API_KEY)
+        m2 = dict(zip(d2, v2))
+        dates = [d for d in d10 if d in m2]
+        y2 = [m2[d] for d in dates]
+        m10 = dict(zip(d10, v10))
+        y10 = [m10[d] for d in dates]
+        ranges, start = [], None
+        for i in range(len(dates)):
+            inv = y2[i] > y10[i]
+            if inv and start is None:
+                start = i
+            if (not inv) and start is not None:
+                ranges.append([start, i - 1]); start = None
+        if start is not None:
+            ranges.append([start, len(dates) - 1])
+        episodes = [{"from": dates[a], "to": dates[b], "days": b - a + 1} for a, b in ranges if b - a + 1 >= 20]
+        return {"dates": dates, "y2": y2, "y10": y10, "inverted_ranges": ranges,
+                "episodes": episodes[-5:], "last_date": dates[-1],
+                "last_y2": y2[-1], "last_y10": y10[-1],
+                "inverted_now": y2[-1] > y10[-1]}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def compute_mstr_nav():
     """回傳 MSTR 嘅 (a) 股價 / BTC 價 比率歷史 (sats 計), (b) 最新簡化 mNAV 快照。
     簡化 mNAV = 市值 / (持幣量 x BTC價)，唔計債務、優先股同現金，
@@ -984,7 +1014,7 @@ def compute_parabolic_channel(values, future_frac=0.25):
 # HTML 產生 (讀取獨立範本檔案)
 # ============================================================================
 
-def build_html(all_data, failed_assets, mstr_nav=None):
+def build_html(all_data, failed_assets, mstr_nav=None, yield_data=None):
     payload = {}
     for name in all_data:
         info = all_data[name]
@@ -1039,7 +1069,7 @@ def build_html(all_data, failed_assets, mstr_nav=None):
         "values": pe_values,
         "bands": pe_bands,
         "last_value": current_pe,
-        "last_date": str(current_year) + " (最新一年，由用戶提供嘅逐年市盈率數據)",
+        "last_date": HSI_PE_LATEST_DATE,
         "use_log": False,
         "is_parabolic": False,
         "marker": {"index": len(pe_years) - 1, "value": current_pe,
@@ -1063,10 +1093,11 @@ def build_html(all_data, failed_assets, mstr_nav=None):
     html = html.replace("__VERSION__", SCRIPT_VERSION)
     html = html.replace("__GENERATED_TS__", generated_ts)
     html = html.replace("__HSI_PE_CURRENT__", str(current_pe))
-    html = html.replace("__HSI_PE_DATE__", str(current_year) + "年 (逐年hardcode數據，由用戶提供)")
+    html = html.replace("__HSI_PE_DATE__", HSI_PE_LATEST_DATE)
     html = html.replace("__DATA_JSON__", data_json)
     html = html.replace("__HSI_PE_JSON__", hsi_pe_json)
     html = html.replace("__MSTR_NAV_JSON__", json.dumps(mstr_nav or {"error": "未計算"}, ensure_ascii=False))
+    html = html.replace("__YIELD_JSON__", json.dumps(yield_data or {"error": "未計算"}, ensure_ascii=False))
     return html
 
 
@@ -1541,7 +1572,9 @@ def main():
 
     print("計算 MSTR NAV ...")
     mstr_nav = compute_mstr_nav()
-    html = build_html(all_data, failed_assets, mstr_nav)
+    print("計算 2年期/10年期國債孳息率 ...")
+    yield_data = compute_yield_curve()
+    html = build_html(all_data, failed_assets, mstr_nav, yield_data)
     html_path = os.path.join(DOCS_DIR, "market_channels_report.html")
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)

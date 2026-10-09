@@ -244,7 +244,7 @@
 
 
 <div id="mstr-nav-panel" style="padding:0 24px;margin-bottom:30px;max-width:720px;">
-  <h2 style="padding:0 24px;">MSTR NAV 分析: 股價 ÷ BTC 價 (sats)</h2>
+  <h2 style="padding:0 24px;">MSTR 股價以 BTC 計 (sats，唔係 mNAV)</h2>
   <div class="rr-chart-wrap">
     <span class="chart-click-hint">點擊放大</span>
     <canvas id="mstr-nav-canvas" height="260"></canvas>
@@ -252,6 +252,18 @@
   <div class="rr-table-wrap">
     <div class="readout" id="mstr-nav-readout"></div>
     <div class="rr-note" id="mstr-nav-note"></div>
+  </div>
+</div>
+
+<div id="yield-panel" style="padding:0 24px;margin-bottom:30px;max-width:720px;">
+  <h2 style="padding:0 24px;">美國 2年期 vs 10年期國債孳息率 (倒掛)</h2>
+  <div class="rr-chart-wrap">
+    <span class="chart-click-hint">點擊放大</span>
+    <canvas id="yield-canvas" height="260"></canvas>
+  </div>
+  <div class="rr-table-wrap">
+    <div class="readout" id="yield-readout"></div>
+    <div class="rr-note" id="yield-note"></div>
   </div>
 </div>
 
@@ -306,10 +318,10 @@ function renderMstrNav(){
   const d = MSTR_NAV, note = document.getElementById('mstr-nav-note'), ro = document.getElementById('mstr-nav-readout');
   if(!d || d.error){ note.textContent = 'MSTR NAV 數據攞唔到: ' + ((d && d.error) || '未知原因'); return; }
   const usd = function(v){ return '$' + (v>=1e9 ? (v/1e9).toFixed(2)+'B' : v.toLocaleString(undefined,{maximumFractionDigits:2})); };
-  const cells = [['持有 BTC', d.btc_held.toLocaleString()], ['BTC 價值', usd(d.btc_value)], ['市值', usd(d.market_cap)], ['簡化 mNAV', d.mnav + 'x'],
-    ['每股 BTC 淨值', '$' + d.nav_per_share], ['MSTR 股價', '$' + d.mstr_price], ['BTC 價', '$' + d.btc_price.toLocaleString()], ['折/溢價', ((d.mnav-1)*100).toFixed(1) + '%']];
+  const cells = [['簡化 mNAV (市值÷BTC價值)', d.mnav.toFixed(2) + 'x'], ['折/溢價', ((d.mnav-1)*100).toFixed(1) + '%'], ['持有 BTC', d.btc_held.toLocaleString()], ['BTC 價值', usd(d.btc_value)], ['市值', usd(d.market_cap)],
+    ['每股 BTC 淨值', '$' + d.nav_per_share], ['MSTR 股價', '$' + d.mstr_price], ['BTC 價', '$' + d.btc_price.toLocaleString()]];
   ro.innerHTML = cells.map(function(c){ return '<div class="cell"><div class="k">' + c[0] + '</div><div class="v">' + c[1] + '</div></div>'; }).join('');
-  note.innerHTML = '簡化 mNAV = 市值 ÷ (持幣量 × BTC價)，唔計債務、優先股同現金，同 Strategy 官方 mNAV 有出入。持幣量同股數係手動填 (見 Python 設定)，只係快照，截至 ' + d.last_date + '。<br>圖表係 MSTR 股價換算成 BTC 嘅比率: 比率升 = MSTR 相對 BTC 跑贏 (溢價擴大或每股持幣增加)。呢個唔係歷史 NAV 曲線，因為歷史持倉表 Yahoo 冇提供。';
+  note.innerHTML = '簡化 mNAV = 市值 ÷ (持幣量 × BTC價)，唔計債務、優先股同現金，同 Strategy 官方 mNAV 有出入。持幣量同股數係手動填 (見 Python 設定)，只係快照，截至 ' + d.last_date + '。<br>上面 mNAV 先係你平時睇嘅「一點幾」嗰種倍數。下圖係 MSTR 一股值幾多 sats (1 BTC = 1億 sats)，所以數字好大: 比率升 = MSTR 相對 BTC 跑贏 (溢價擴大或每股持幣增加)。呢個唔係歷史 NAV 曲線，因為歷史持倉表 Yahoo 冇提供。';
   const vl = 'MSTR/BTC (sats)';
   drawChart('mstr-nav-canvas', d.dates, d.ratio_sats, {}, false, null, {height:260, valueLabel: vl});
   setupCrosshair('mstr-nav-canvas');
@@ -318,6 +330,32 @@ function renderMstrNav(){
   });
 }
 window.addEventListener('load', renderMstrNav);
+
+function renderYield(){
+  const d = YIELD_DATA, note = document.getElementById('yield-note'), ro = document.getElementById('yield-readout');
+  if(!d || d.error){ note.textContent = '國債孳息率數據攞唔到: ' + ((d && d.error) || '未知原因'); return; }
+  const sp = d.last_y10 - d.last_y2;
+  const cells = [['2年期 (%)', d.last_y2.toFixed(2)], ['10年期 (%)', d.last_y10.toFixed(2)],
+    ['利差 10Y-2Y', (sp>=0?'+':'') + sp.toFixed(2)], ['狀態', d.inverted_now ? '倒掛中' : '正常']];
+  ro.innerHTML = cells.map(function(c){ return '<div class="cell"><div class="k">' + c[0] + '</div><div class="v">' + c[1] + '</div></div>'; }).join('');
+  const eps = (d.episodes || []).map(function(e){ return e.from + ' 至 ' + e.to + ' (' + e.days + '個交易日)'; });
+  note.innerHTML = '白線 = 10年期，紅線 = 2年期，紅色底 = 倒掛 (2年期高過10年期)。數據: FRED 日數據，截至 ' + d.last_date +
+    '。<br>最近幾次倒掛 (20日以上): ' + (eps.length ? eps.join('；') : '無');
+  const extra = function(i){
+    const s = d.y10[i] - d.y2[i];
+    return ['2年期: ' + d.y2[i].toFixed(2) + '%', '利差 10Y-2Y: ' + (s>=0?'+':'') + s.toFixed(2) + '%', s < 0 ? '倒掛中' : '正常 (10年期較高)'];
+  };
+  const bands = {'0': d.y2}, labels = {'0': '2年期 (%)'}, vl = '10年期 (%)';
+  drawChart('yield-canvas', d.dates, d.y10, bands, false, null, {height:260, valueLabel: vl, bandLabels: labels, extraLines: extra, shadeRanges: d.inverted_ranges});
+  setupCrosshair('yield-canvas');
+  document.getElementById('yield-canvas').addEventListener('click', function(){
+    openFullscreen('美國 2年期(紅) vs 10年期(白) 國債孳息率，紅底=倒掛', false,
+      {dates: d.dates, values: d.y10, bands: bands, valueLabel: vl, bandLabels: labels, extraLines: extra, shadeRanges: d.inverted_ranges});
+  });
+}
+window.addEventListener('load', renderYield);
+
+const YIELD_DATA = __YIELD_JSON__;
 
 const HSI_PE_DATA = __HSI_PE_JSON__;
 const NAMES = Object.keys(DATA);
@@ -447,6 +485,16 @@ function drawChart(canvasId, dates, values, bands, useLog, markerPoint, opts){
     ctx.fillText(formatNum(v), padL-8, py+3);
   });
 
+  if(opts.shadeRanges){
+    ctx.save();
+    ctx.fillStyle = 'rgba(201,96,90,0.20)';
+    opts.shadeRanges.forEach(function(r){
+      const x1 = xToPx(r[0]), x2 = xToPx(r[1]);
+      ctx.fillRect(x1, padT, Math.max(1, x2-x1), plotH);
+    });
+    ctx.restore();
+  }
+
   // 未來延伸區域: 用淡淡嘅斜紋底色標示，等用戶一眼睇到
   // 「呢段係將趨勢線延伸落去嘅估算，唔係實際成交數據」
   if(nFuture > 0){
@@ -522,7 +570,7 @@ function drawChart(canvasId, dates, values, bands, useLog, markerPoint, opts){
     padL: padL, padR: padR, padT: padT, padB: padB, plotW: plotW, plotH: plotH, W: W, H: H,
     lo: lo, hi: hi, span: span, useLog: useLog, dates: dates, values: values, allDates: allDates,
     totalLen: totalLen, nFuture: nFuture,
-    highs: highs, lows: lows, closes: closes, bands: bands, valueLabel: opts.valueLabel || null,
+    highs: highs, lows: lows, closes: closes, bands: bands, valueLabel: opts.valueLabel || null, bandLabels: opts.bandLabels || null, extraLines: opts.extraLines || null,
     xToPx: xToPx, yToPx: yToPx,
     pxToValue: function(py){
       const frac = (padT + plotH - py) / plotH;
@@ -617,7 +665,7 @@ function setupCrosshair(canvasId){
         const distPx = Math.abs(bandPy - py);
         if(distPx < nearestDistPx){
           nearestDistPx = distPx;
-          nearestBand = { key: k, label: sigmaLabels[k] || k, value: bandVal };
+          nearestBand = { key: k, label: (state.bandLabels && state.bandLabels[k]) || sigmaLabels[k] || k, value: bandVal };
         }
       });
     }
@@ -682,6 +730,7 @@ function setupCrosshair(canvasId){
         infoLines.push(nearestBand.label + ': ' + formatNum(nearestBand.value));
       }
     }
+    if(!isForecastZone && state.extraLines){ infoLines = infoLines.concat(state.extraLines(idx)); }
     octx.font = '11px monospace';
     const infoBoxW = safeMax(infoLines.map(function(l){ return octx.measureText(l).width; })) + 14;
     const infoBoxH = infoLines.length * 15 + 8;
@@ -783,8 +832,9 @@ function openFullscreen(name, isHsiPe, custom){
 }
 function renderFullscreen(){
   if(currentFsCustom){
-    drawChart('fullscreen-canvas', currentFsCustom.dates, currentFsCustom.values, {}, false, null,
-      {padL: 90, fontSize: 13, valueLabel: currentFsCustom.valueLabel});
+    const c = currentFsCustom;
+    drawChart('fullscreen-canvas', c.dates, c.values, c.bands || {}, false, null,
+      {padL: 90, fontSize: 13, valueLabel: c.valueLabel, bandLabels: c.bandLabels, extraLines: c.extraLines, shadeRanges: c.shadeRanges});
     return;
   }
   if(currentFsIsHsiPe){
