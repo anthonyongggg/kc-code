@@ -243,6 +243,18 @@
 </div>
 
 
+<div id="mstr-nav-panel" style="padding:0 24px;margin-bottom:30px;">
+  <h2 style="padding:0 24px;">MSTR NAV 分析 (比特幣持倉價值)</h2>
+  <div class="rr-chart-wrap">
+    <span class="chart-click-hint">MSTR 股價 ÷ BTC 價 (以 sats 計)</span>
+    <canvas id="mstr-nav-canvas" height="320" style="cursor:default;"></canvas>
+  </div>
+  <div class="rr-table-wrap">
+    <div class="readout" id="mstr-nav-readout"></div>
+    <div class="rr-note" id="mstr-nav-note"></div>
+  </div>
+</div>
+
 <div id="fullscreen-overlay">
   <div class="fs-header">
     <div class="fs-title" id="fs-title"></div>
@@ -288,6 +300,20 @@ function copyAiPrompt(){
 }
 
 const DATA = __DATA_JSON__;
+const MSTR_NAV = __MSTR_NAV_JSON__;
+
+function renderMstrNav(){
+  const d = MSTR_NAV, note = document.getElementById('mstr-nav-note'), ro = document.getElementById('mstr-nav-readout');
+  if(!d || d.error){ note.textContent = 'MSTR NAV 數據攞唔到: ' + ((d && d.error) || '未知原因'); return; }
+  const usd = function(v){ return '$' + (v>=1e9 ? (v/1e9).toFixed(2)+'B' : v.toLocaleString(undefined,{maximumFractionDigits:2})); };
+  const cells = [['持有 BTC', d.btc_held.toLocaleString()], ['BTC 價值', usd(d.btc_value)], ['市值', usd(d.market_cap)], ['簡化 mNAV', d.mnav + 'x'],
+    ['每股 BTC 淨值', '$' + d.nav_per_share], ['MSTR 股價', '$' + d.mstr_price], ['BTC 價', '$' + d.btc_price.toLocaleString()], ['折/溢價', ((d.mnav-1)*100).toFixed(1) + '%']];
+  ro.innerHTML = cells.map(function(c){ return '<div class="cell"><div class="k">' + c[0] + '</div><div class="v">' + c[1] + '</div></div>'; }).join('');
+  note.innerHTML = '簡化 mNAV = 市值 ÷ (持幣量 × BTC價)，唔計債務、優先股同現金，同 Strategy 官方 mNAV 有出入。持幣量同股數係手動填 (見 Python 設定)，只係快照，截至 ' + d.last_date + '。<br>圖表係 MSTR 股價換算成 BTC 嘅比率: 比率升 = MSTR 相對 BTC 跑贏 (溢價擴大或每股持幣增加)。呢個唔係歷史 NAV 曲線，因為歷史持倉表 Yahoo 冇提供。';
+  drawChart('mstr-nav-canvas', d.dates, d.ratio_sats, {}, false, null, {height:320});
+}
+window.addEventListener('load', renderMstrNav);
+
 const HSI_PE_DATA = __HSI_PE_JSON__;
 const NAMES = Object.keys(DATA);
 

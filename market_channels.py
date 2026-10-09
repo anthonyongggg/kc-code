@@ -445,6 +445,7 @@ ASSETS = [
     ("標普500指數 (S&P 500)",        "^GSPC",    True,  False),
     ("白銀 (Silver, USD/oz)",        "SI=F",     True,  False),
     ("WTI原油 (Crude Oil)",         "CL=F",     True,  False),
+    ("Strategy (MSTR)",            "MSTR",     True,  False),
 ]
 
 HISTORY_PERIOD = "max"
@@ -855,6 +856,49 @@ def compute_risk_return(ticker_symbol, start_date, end_date):
     return result
 
 
+# ----------------------------------------------------------------------------
+# MSTR 簡化 NAV 分析 (Yahoo Finance 冇提供 MSTR 嘅 NAV，因為佢係個股)。
+# 下面兩個數字 Yahoo 攞唔到，係手動填 (來源: newhedge.io 快照，2026-10)。
+# Strategy 差唔多逐星期買幣，想準確請按佢最新 8-K / strategy.com 更新呢兩個數。
+# ----------------------------------------------------------------------------
+MSTR_BTC_HELD = 845256
+MSTR_SHARES_OUT = 333913000
+MSTR_NAV_START = "2020-08-01"   # Strategy 開始買比特幣嘅月份
+
+
+def compute_mstr_nav():
+    """回傳 MSTR 嘅 (a) 股價 / BTC 價 比率歷史 (sats 計), (b) 最新簡化 mNAV 快照。
+    簡化 mNAV = 市值 / (持幣量 x BTC價)，唔計債務、優先股同現金，
+    所以同 Strategy 官方 mNAV (用企業價值) 會有出入。"""
+    try:
+        def close_of(t):
+            d = yf.download(t, period="max", interval="1d", progress=False, auto_adjust=True)
+            if isinstance(d.columns, pd.MultiIndex):
+                d.columns = d.columns.get_level_values(0)
+            return d["Close"].dropna()
+        m, b = close_of("MSTR"), close_of("BTC-USD")
+        df = pd.concat([m.rename("m"), b.rename("b")], axis=1, join="inner")
+        df = df[df.index >= MSTR_NAV_START]
+        if len(df) < 10:
+            return {"error": "MSTR / BTC 重疊數據不足"}
+        ratio = (df["m"] / df["b"] * 1e8)
+        m_last, b_last = float(df["m"].iloc[-1]), float(df["b"].iloc[-1])
+        btc_value = MSTR_BTC_HELD * b_last
+        mcap = MSTR_SHARES_OUT * m_last
+        return {
+            "dates": [d.strftime("%Y-%m-%d") for d in df.index],
+            "ratio_sats": [round(float(x), 1) for x in ratio],
+            "last_date": df.index[-1].strftime("%Y-%m-%d"),
+            "mstr_price": round(m_last, 2), "btc_price": round(b_last, 2),
+            "btc_held": MSTR_BTC_HELD, "shares_out": MSTR_SHARES_OUT,
+            "btc_value": btc_value, "market_cap": mcap,
+            "mnav": round(mcap / btc_value, 3),
+            "nav_per_share": round(btc_value / MSTR_SHARES_OUT, 2),
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def compute_log_channel(values, future_frac=0.25):
     """標準嘅對數迴歸通道 (直線帶)。
     future_frac: 通道線額外向未來延伸嘅比例 (相對於現有數據長度)。
@@ -940,7 +984,7 @@ def compute_parabolic_channel(values, future_frac=0.25):
 # HTML 產生 (讀取獨立範本檔案)
 # ============================================================================
 
-def build_html(all_data, failed_assets):
+def build_html(all_data, failed_assets, mstr_nav=None):
     payload = {}
     for name in all_data:
         info = all_data[name]
@@ -1022,6 +1066,7 @@ def build_html(all_data, failed_assets):
     html = html.replace("__HSI_PE_DATE__", str(current_year) + "年 (逐年hardcode數據，由用戶提供)")
     html = html.replace("__DATA_JSON__", data_json)
     html = html.replace("__HSI_PE_JSON__", hsi_pe_json)
+    html = html.replace("__MSTR_NAV_JSON__", json.dumps(mstr_nav or {"error": "未計算"}, ensure_ascii=False))
     return html
 
 
@@ -1494,7 +1539,9 @@ def main():
         print("如果持續失敗，可以嘗試: (1) 檢查網絡, (2) 換個時間再試 (Yahoo Finance 有時會限流),")
         print("(3) 將呢個 ticker 用瀏覽器開 https://finance.yahoo.com/quote/<ticker> 睇下網站本身有冇呢個代號。")
 
-    html = build_html(all_data, failed_assets)
+    print("計算 MSTR NAV ...")
+    mstr_nav = compute_mstr_nav()
+    html = build_html(all_data, failed_assets, mstr_nav)
     html_path = os.path.join(DOCS_DIR, "market_channels_report.html")
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html)
