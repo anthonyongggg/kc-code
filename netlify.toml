@@ -1,3 +1,20 @@
-# 純靜態網站：唔使 build，直接發佈 site 資料夾
+# 靜態網站 + Netlify Functions
 [build]
   publish = "site"
+  functions = "netlify/functions"
+
+# 令前端原本打 /api/xxx 嘅 request 轉去對應嘅 function (前端唔使改)
+[[redirects]]
+  from = "/api/search"
+  to = "/.netlify/functions/search"
+  status = 200
+
+[[redirects]]
+  from = "/api/risk-return"
+  to = "/.netlify/functions/risk-return"
+  status = 200
+
+[[redirects]]
+  from = "/api/pe-compare"
+  to = "/.netlify/functions/pe-compare"
+  status = 200
