@@ -1,7 +1,6 @@
 name: Daily market report update
 
 on:
-
   workflow_dispatch:
 
 permissions:
@@ -41,5 +40,6 @@ jobs:
             echo "No changes to commit."
           else
             git commit -m "Daily report update $(date -u +'%Y-%m-%d')"
+            git pull --rebase -X theirs origin main
             git push
           fi
